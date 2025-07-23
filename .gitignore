@@ -1,0 +1,6 @@
+# Ignorar o banco de dados
+suplementos.db
+
+# Cache Python
+__pycache__/
+*.pyc
