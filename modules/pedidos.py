@@ -1,59 +1,97 @@
-import sqlite3
-from datetime import datetime
-
-con = sqlite3.connect("suplementos.db")
-cur = con.cursor()
-
-carrinho = []
+from database.connection import conectar
 
 def adicionar_ao_carrinho():
-    from produtos import listar_produtos
-    listar_produtos()
-    pid = input("ID do produto: ").strip()
-    qtd = int(input("Quantidade: "))
-    cur.execute("SELECT estoque FROM produtos WHERE id = ?", (pid,))
-    row = cur.fetchone()
-    if row and row[0] >= qtd:
-        carrinho.append((int(pid), qtd))
-        print("✅ Adicionado ao carrinho!\n")
-    else:
-        print("❌ Estoque insuficiente ou produto inválido.\n")
+    con = conectar()
+    cur = con.cursor()
+
+    produto_id = input("ID do produto: ")
+    quantidade = int(input("Quantidade: "))
+
+    cur.execute("SELECT preco FROM produtos WHERE id = ?", (produto_id,))
+    produto = cur.fetchone()
+
+    if not produto:
+        print("❌ Produto não encontrado.")
+        con.close()
+        return
+
+    preco = produto[0]
+    subtotal = preco * quantidade
+
+    cur.execute("""
+        INSERT INTO itens_pedido (pedido_id, produto_id, quantidade, subtotal)
+        VALUES (NULL, ?, ?, ?)
+    """, (produto_id, quantidade, subtotal))
+
+    con.commit()
+    con.close()
+    print("✅ Item adicionado ao carrinho!\n")
+
 
 def finalizar_pedido():
-    if not carrinho:
+    con = conectar()
+    cur = con.cursor()
+
+    cur.execute("""
+        SELECT produto_id, quantidade, subtotal FROM itens_pedido
+        WHERE pedido_id IS NULL
+    """)
+    itens = cur.fetchall()
+
+    if not itens:
         print("🛒 Carrinho vazio.\n")
+        con.close()
         return
-    total = 0
-    for pid, qtd in carrinho:
-        cur.execute("SELECT preco FROM produtos WHERE id = ?", (pid,))
-        total += cur.fetchone()[0] * qtd
-    data = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+    total = sum(item[2] for item in itens)
+
+    from datetime import datetime
+    data = datetime.now().strftime("%d/%m/%Y %H:%M")
+
     cur.execute("INSERT INTO pedidos (data, total) VALUES (?, ?)", (data, total))
     pedido_id = cur.lastrowid
-    for pid, qtd in carrinho:
-        cur.execute("SELECT preco FROM produtos WHERE id = ?", (pid,))
-        preco = cur.fetchone()[0]
-        subtotal = preco * qtd
-        cur.execute("INSERT INTO itens_pedido (pedido_id, produto_id, quantidade, subtotal) VALUES (?, ?, ?, ?)", (pedido_id, pid, qtd, subtotal))
-        cur.execute("UPDATE produtos SET estoque = estoque - ? WHERE id = ?", (qtd, pid))
+
+    for produto_id, quantidade, subtotal in itens:
+        cur.execute("""
+            UPDATE itens_pedido
+            SET pedido_id = ?
+            WHERE produto_id = ? AND pedido_id IS NULL
+        """, (pedido_id, produto_id))
+
+        cur.execute("""
+            UPDATE produtos
+            SET estoque = estoque - ?
+            WHERE id = ?
+        """, (quantidade, produto_id))
+
     con.commit()
-    carrinho.clear()
-    print(f"✅ Pedido #{pedido_id} finalizado! Total R${total:.2f}\n")
+    con.close()
+    print(f"✅ Pedido finalizado! Total: R${total:.2f}\n")
+
 
 def visualizar_pedidos():
-    cur.execute("SELECT * FROM pedidos ORDER BY data DESC")
+    con = conectar()
+    cur = con.cursor()
+
+    cur.execute("SELECT id, data, total FROM pedidos ORDER BY id DESC")
     pedidos = cur.fetchall()
+
     if not pedidos:
-        print("📭 Nenhum pedido registrado.\n")
+        print("🗂️ Nenhum pedido registrado.\n")
+        con.close()
         return
+
     for pid, data, total in pedidos:
         print(f"\n🧾 Pedido #{pid} | {data} | Total: R${total:.2f}")
         cur.execute("""
-            SELECT p.nome, ip.quantidade, ip.subtotal
-            FROM itens_pedido ip
-            JOIN produtos p ON p.id = ip.produto_id
-            WHERE ip.pedido_id = ?
+            SELECT produto_id, quantidade, subtotal FROM itens_pedido
+            WHERE pedido_id = ?
         """, (pid,))
-        for nome, qtd, sub in cur.fetchall():
-            print(f"  - {nome} x{qtd} → R${sub:.2f}")
+        itens = cur.fetchall()
+        for prod_id, qtd, sub in itens:
+            cur.execute("SELECT nome FROM produtos WHERE id = ?", (prod_id,))
+            nome = cur.fetchone()[0]
+            print(f" - {nome} x{qtd} → R${sub:.2f}")
+
+    con.close()
     print()

@@ -14,11 +14,12 @@ from modules.pedidos import (
 
 from database.init_db import iniciar_banco
 
+
 def menu():
-    iniciar_banco()  # cria as tabelas no banco se não existirem
+    iniciar_banco()  # garante que as tabelas estão criadas
 
     while True:
-        print("\n=== E-COMMERCE DE SUPLEMENTOS ===")
+        print("\n🛒 === E-COMMERCE DE SUPLEMENTOS ===")
         print("1) Cadastrar produto")
         print("2) Listar produtos")
         print("3) Editar produto")
@@ -28,7 +29,7 @@ def menu():
         print("7) Finalizar pedido")
         print("8) Ver pedidos")
         print("9) Sair")
-        op = input("Escolha: ").strip()
+        op = input("Escolha uma opção: ").strip()
 
         opcoes = {
             "1": cadastrar_produto,
@@ -42,12 +43,13 @@ def menu():
         }
 
         if op == "9":
-            print("🔚 Encerrando sistema...")
+            print("👋 Encerrando sistema. Até mais!")
             break
         elif op in opcoes:
             opcoes[op]()
         else:
-            print("❌ Opção inválida.\n")
+            print("❌ Opção inválida. Tente novamente.\n")
+
 
 if __name__ == "__main__":
     menu()

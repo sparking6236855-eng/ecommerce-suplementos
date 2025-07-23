@@ -4,7 +4,6 @@ def iniciar_banco():
     con = sqlite3.connect("suplementos.db")
     cur = con.cursor()
 
-    # Cria tabela produtos
     cur.execute("""
         CREATE TABLE IF NOT EXISTS produtos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -14,7 +13,6 @@ def iniciar_banco():
         )
     """)
 
-    # Cria tabela pedidos
     cur.execute("""
         CREATE TABLE IF NOT EXISTS pedidos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -23,11 +21,10 @@ def iniciar_banco():
         )
     """)
 
-    # Cria tabela itens_pedido
     cur.execute("""
         CREATE TABLE IF NOT EXISTS itens_pedido (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            pedido_id INTEGER NOT NULL,
+            pedido_id INTEGER,
             produto_id INTEGER NOT NULL,
             quantidade INTEGER NOT NULL,
             subtotal REAL NOT NULL,
